@@ -1,0 +1,66 @@
+---
+- name: RedHat
+  include: redhat.yml
+  when: ansible_os_family == 'RedHat'
+
+- name: Windows
+  include: windows.yml
+  when: ansible_os_family == 'Windows'
+
+# temp to add dns ip until TGW resolved
+- name: adding dns resolution for artifactory repo (ansible host)
+  lineinfile:
+    dest: /etc/hosts
+    line: "{{ artifactory_ip }}   {{ artifactory_trusted_url }}"
+    state: present
+    insertafter: EOF
+  delegate_to: localhost
+  ignore_errors: true
+
+- name: create pip.conf for use with pypi artifactory repo (ansible host)
+  copy:
+    dest: /etc/pip.conf
+    force: yes
+    content: |
+      [global]
+      index-url = {{ artifactory_pip_url }}
+      trusted-host = {{ artifactory_trusted_url }}
+    owner: root
+    group: root
+    mode: 666
+  delegate_to: localhost
+  ignore_errors: true
+
+- name: install agent dependencies (ansible host)
+  yum:
+    name: '{{ item }}'
+    state: installed
+    validate_certs: no
+    disable_plugin: "*"
+  with_items:
+    - python-pip
+  delegate_to: localhost
+  ignore_errors: true
+
+- name: install orionsdk (ansible host)
+  pip:
+    name: orionsdk
+  delegate_to: localhost
+  ignore_errors: true
+
+- name: add custom properties to solarwinds node (ansible host)
+  sw_manage:
+    hostname: '{{ agent_secrets.sw_hostname }}'
+    username: '{{ ent_domain.username }}'
+    password: '{{ ent_domain.password }}'
+    state: "update"
+    caption: "{{ hostvars[inventory_hostname]['ansible_facts']['hostname'] }}"
+    env: '{{ env }}'
+    fisma: '{{ fisma }}'
+    project_lead: '{{ project_lead }}'
+    sme: '{{ sme }}'
+  delegate_to: localhost
+  run_once: true
+  retries: 5
+  delay: 15
+  ignore_errors: true

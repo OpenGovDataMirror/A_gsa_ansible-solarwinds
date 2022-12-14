@@ -1,0 +1,15 @@
+---
+# defaults file for ansible-solarwinds
+
+#universal
+solarwinds_agent_config_url: "" # default solarwinds-agent.mst url
+
+#redhat
+redhat_solarwinds_agent_path: "/opt/solarwinds" # default redhat install directory
+redhat_solarwinds_agent_url: "" # default redhat agent url
+
+#windows
+windows_agent_path: "C:\\Program Files (x86)\\SolarWinds\\Agent" # default windows install directory
+windows_solarwinds_agent_url: "" # default windows agent url
+windows_solarwinds_product_id: "" # default product_id
+windows_agent_log: "C:\\Temp\\Logs" # default agent windows log directory

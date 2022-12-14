@@ -1,0 +1,54 @@
+---
+- name: checking for agent install
+  win_service:
+    name: solarwindsagent64
+  register: agent
+
+- debug:
+    msg: "solarwinds agent not found (installing)"
+  when: not agent.exists
+
+- debug:
+    msg: "solarwinds agent found (skipping install)"
+  when: agent.exists
+
+- name: create {{ windows_agent_log }} directory
+  win_file:
+    path: '{{ windows_agent_log }}'
+    recurse: yes
+    state: directory
+  when: not agent.exists
+
+- name: create {{ windows_solarwinds_agent_path }} directory
+  win_file:
+    path: '{{ windows_solarwinds_agent_path }}'
+    recurse: yes
+    state: directory
+  when: not agent.exists
+
+- name: copy solarwinds-agent.mst to {{ windows_solarwinds_agent_path }} directory
+  win_get_url:
+    url: '{{ solarwinds_agent_config_url }}'
+    dest: '{{ windows_solarwinds_agent_path }}\SolarWinds-Agent.mst'
+    timeout: 600
+  when: not agent.exists
+
+- name: copy solarwinds.msi to {{ windows_solarwinds_agent_path }} directory
+  win_get_url:
+    url: '{{ windows_solarwinds_agent_url }}'
+    dest: '{{ windows_solarwinds_agent_path }}\SolarWinds-Agent.msi'
+    timeout: 600
+  when: not agent.exists
+
+- name: install solarwinds agent (windows)
+  win_command: >
+    msiexec /i "{{ windows_solarwinds_agent_path }}\SolarWinds-Agent.msi"
+    TRANSFORMS="{{ windows_solarwinds_agent_path }}\SolarWinds-Agent.mst"
+    /L*V "{{ windows_agent_log }}\solarwinds_log.txt"
+  when: not agent.exists
+
+- name: verify solarwinds started
+  win_service:
+    name: solarwindsagent64
+    state: started
+    start_mode: auto

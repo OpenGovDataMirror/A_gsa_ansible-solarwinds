@@ -1,0 +1,63 @@
+---
+- name: checking for agent install
+  stat:
+    path: /etc/init.d/swiagentd
+  register: agent
+
+- debug:
+    msg: "solarwinds agent not found (installing)"
+  when: not agent.stat.exists
+
+- debug:
+    msg: "solarwinds agent found (skipping install)"
+  when: agent.stat.exists
+
+- name: copying swiagent.tar.gz to /tmp for install
+  get_url:
+    url: '{{ redhat_solarwinds_agent_url }}'
+    dest: /tmp/swiagent.tar.gz
+    validate_certs: no
+    mode: 0755
+  when: not agent.stat.exists
+
+- name: create /tmp/swiagent directory
+  file:
+    path: /tmp/swiagent
+    recurse: yes
+    state: directory
+    mode: 0755
+  when: not agent.stat.exists
+
+- name: extract swiagent.tar.gz to /tmp for install
+  unarchive:
+    src: /tmp/swiagent.tar.gz
+    dest: /tmp/swiagent
+    remote_src: yes
+    mode: 0755
+  when: not agent.stat.exists
+
+- name: change shell permissions for swiagent
+  file:
+    path: /tmp/swiagent
+    state: directory
+    recurse: yes
+    mode: a+x
+  when: not agent.stat.exists
+
+- name: execute install.sh for swiagent
+  shell:
+    cmd: ./install.sh >> /tmp/solarwinds_install.txt
+    chdir: /tmp/swiagent/
+  when: not agent.stat.exists
+
+- name: cleanup /tmp/swiagent directory
+  file:
+    path: /tmp/swiagent
+    state: absent
+    mode: 0755
+  when: not agent.stat.exists
+
+- name: verify solarwinds started
+  service:
+    name: swiagentd
+    state: started
